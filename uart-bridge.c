@@ -265,6 +265,11 @@ void init_uart_data(uint8_t itf) {
 #ifdef LINE_CONTROL
 	gpio_init(ui->dtr_pin);
 	gpio_set_dir(ui->dtr_pin, GPIO_OUT);
+	gpio_set_pulls(ui->dtr_pin, false, false);
+	gpio_set_drive_strength(ui->dtr_pin, GPIO_DRIVE_STRENGTH_12MA);
+	gpio_set_slew_rate(ui->dtr_pin, GPIO_SLEW_RATE_FAST);
+	gpio_put(ui->dtr_pin, 1);
+
 	gpio_init(ui->dsr_pin);
 	gpio_set_dir(ui->dsr_pin, GPIO_IN);
 #endif
