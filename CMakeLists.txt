@@ -17,6 +17,8 @@ target_include_directories(uart_bridge PUBLIC
 target_link_libraries(uart_bridge
 	pico_multicore
 	pico_stdlib
+	hardware_spi
+	hardware_uart
 	tinyusb_device)
 
 pico_add_extra_outputs(uart_bridge)
