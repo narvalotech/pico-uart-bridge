@@ -18,14 +18,14 @@
 
 #define LED_PIN 25
 
-#define BUFFER_SIZE 256
+#define BUFFER_SIZE 512
 
 #define DEF_BIT_RATE 115200
 #define DEF_STOP_BITS 1
 #define DEF_PARITY 0
 #define DEF_DATA_BITS 8
 
-#define SPI_FREQ_HZ (2000 * 1000)
+#define SPI_FREQ_HZ (10000 * 1000)
 #define SPI_INST spi0
 
 typedef struct {
@@ -108,9 +108,8 @@ void core1_entry(void)
 	}
 }
 
-void insert_byte(uint8_t byte)
-{
-}
+static uint8_t tmpbuf[BUFFER_SIZE];
+static uint32_t tmppos;
 
 void uart_read_bytes(void) {
 	static uint8_t act = 0;
@@ -120,20 +119,24 @@ void uart_read_bytes(void) {
 	if (ud->uart_pos >= BUFFER_SIZE) return;
 
 	/* wait until SPI bytes are clocked in */
-	/* TODO: use whole buf instead of byte by byte */
-	uint8_t byte;
-
 	do {
-		spi_read_blocking(SPI_INST, 0xFF, &byte, 1);
-
-		mutex_enter_blocking(&ud->uart_mtx);
-		ud->uart_buffer[ud->uart_pos] = byte;
-		ud->uart_pos += 1;
-		mutex_exit(&ud->uart_mtx);
-
-		act ^= 0x01;
-		gpio_put(LED_PIN, act);
+		spi_read_blocking(SPI_INST, 0xFF, &tmpbuf[tmppos], 1);
+		tmppos++;
 	} while (spi_is_readable(SPI_INST));
+
+	mutex_enter_blocking(&ud->uart_mtx);
+	if (ud->uart_pos) goto exit;	/* wait for USB to flush the whole buffer */
+	if (tmppos == 0)  goto exit;	/* we haven't received anything */
+
+	memcpy(ud->uart_buffer, tmpbuf, tmppos);
+	ud->uart_pos = tmppos;
+	tmppos = 0;
+
+	act ^= 0x01;
+	gpio_put(LED_PIN, act);
+
+exit:
+	mutex_exit(&ud->uart_mtx);
 }
 
 void init_uart_data(void) {
